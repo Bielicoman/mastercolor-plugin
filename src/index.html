@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Master Color</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   MASTER COLOR — painel
+   Identidade "Câmara Escura", igual ao site.
+   Alex Ascencio
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  --bg:#07070a; --bg2:#0c0c11; --bg3:#121218; --bg4:#191921;
+  --edge:rgba(255,255,255,.075); --edge2:rgba(255,255,255,.15);
+  --teal:#2ed3b7; --amber:#ff8a3d; --green:#3ddc84; --red:#ff5470; --warn:#ffb020;
+  --txt:#ece7de; --dim:#8c8a95; --dim2:#5d5b67;
+  --r:2px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--txt);font-size:11px;
+  font-family:-apple-system,'Segoe UI',system-ui,sans-serif;
+  height:100vh;overflow:hidden;display:flex;flex-direction:column;user-select:none;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--bg4)}
+::-webkit-scrollbar-track{background:transparent}
+button{font-family:inherit;color:inherit;cursor:pointer}
+
+/* ── cabeçalho ── */
+.hd{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--edge);flex-shrink:0}
+.hd-logo{width:18px;height:18px;flex-shrink:0}
+.hd-logo svg{display:block;width:100%;height:100%}
+.hd-t{font-size:12px;font-weight:700;letter-spacing:-.01em}
+.hd-s{font-size:8.5px;color:var(--dim2);letter-spacing:.05em}
+.hd-st{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:9px;color:var(--dim)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim2);flex-shrink:0;transition:background .3s}
+.dot.on{background:var(--green)}
+.dot.busy{background:var(--warn);animation:bl .9s infinite}
+.dot.err{background:var(--red)}
+@keyframes bl{50%{opacity:.25}}
+
+/* ── corpo rolável ── */
+.body{flex:1;overflow-y:auto;overflow-x:hidden}
+.sec{border-bottom:1px solid var(--edge);padding:10px}
+.sec-h{
+  display:flex;align-items:center;gap:6px;margin-bottom:8px;
+  font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim2);
+}
+.sec-h b{margin-left:auto;color:var(--teal);font-weight:600;letter-spacing:.06em}
+.sec-h b.warn{color:var(--warn)}
+
+/* ── par de imagens ── */
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.slot{position:relative;aspect-ratio:16/10;background:#000;border:1px solid var(--edge);overflow:hidden;cursor:pointer;transition:border-color .18s}
+.slot:hover{border-color:var(--edge2)}
+.slot.drag{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal)}
+.slot.filled{border-color:rgba(46,211,183,.35)}
+.slot canvas{width:100%;height:100%;display:block}
+.slot-lbl{
+  position:absolute;left:0;top:0;padding:2px 5px;font-size:7.5px;letter-spacing:.1em;
+  text-transform:uppercase;background:rgba(7,7,10,.78);color:var(--dim);
+}
+.slot-hint{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim2);text-align:center;padding:4px;
+}
+.slot.filled .slot-hint{display:none}
+
+/* ── botões ── */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  padding:7px 10px;border:1px solid var(--edge2);background:transparent;
+  font-size:10px;letter-spacing:.06em;transition:all .16s;
+}
+.btn:hover:not(:disabled){border-color:var(--txt)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.p{background:var(--teal);border-color:var(--teal);color:#04120f;font-weight:700}
+.btn.p:hover:not(:disabled){background:#48e5ca;border-color:#48e5ca}
+.btn.a{background:var(--amber);border-color:var(--amber);color:#150c05;font-weight:700}
+.btn.a:hover:not(:disabled){background:#ffa05f;border-color:#ffa05f}
+.btn.sm{padding:5px 8px;font-size:9px}
+.row{display:flex;gap:5px;margin-top:6px}
+
+/* ── controles ── */
+.ctl{margin-bottom:9px}
+.ctl:last-child{margin-bottom:0}
+.ctl-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;font-size:9.5px;color:var(--dim)}
+.ctl-h b{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:2px;background:var(--bg4);outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:11px;height:11px;background:var(--teal);cursor:pointer;border-radius:0;
+}
+.sw{display:flex;align-items:center;justify-content:space-between;padding:4px 0;cursor:pointer;font-size:10px;color:var(--dim)}
+.sw+.sw{border-top:1px solid rgba(255,255,255,.045)}
+.sw:hover{color:var(--txt)}
+.sw i{width:26px;height:14px;border:1px solid var(--edge2);background:var(--bg3);position:relative;flex-shrink:0;transition:all .18s}
+.sw i::after{content:'';position:absolute;top:1px;left:1px;width:10px;height:10px;background:var(--dim2);transition:all .18s}
+.sw[aria-pressed="true"] i{background:var(--teal);border-color:var(--teal)}
+.sw[aria-pressed="true"] i::after{left:13px;background:#04120f}
+.sw[aria-pressed="true"]{color:var(--txt)}
+
+/* ── leitura do lumetri ── */
+.lum{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.sl{padding:3px 0}
+.sl-h{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-bottom:2px}
+.sl-h b{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums}
+.sl-t{height:2px;background:var(--bg4);position:relative}
+.sl-t::before{content:'';position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--edge2)}
+.sl-f{position:absolute;top:0;bottom:0;background:var(--teal)}
+.sl-f.pos{background:var(--amber)}
+
+/* ── rodas ── */
+.wh{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.wh-i{text-align:center}
+.wh-d{
+  width:100%;max-width:52px;aspect-ratio:1;margin:0 auto 4px;border-radius:50%;position:relative;
+  background:conic-gradient(from 0deg,#ff5470,#ffb067,#f3e27a,#7be495,#2ed3b7,#5ab6ff,#9c7bff,#ff5470);
+  filter:saturate(.8);
+}
+.wh-d::before{content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(12,12,17,.96) 10%,rgba(12,12,17,.5) 48%,transparent 74%)}
+.wh-p{position:absolute;top:50%;left:50%;width:7px;height:7px;border-radius:50%;background:var(--txt);
+  border:1px solid var(--bg);transform:translate(-50%,-50%);transition:transform .4s cubic-bezier(.2,.9,.25,1)}
+.wh-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim2)}
+
+/* ── escopos ── */
+.scope{height:52px;background:var(--bg);border:1px solid var(--edge);overflow:hidden}
+.scope canvas{width:100%;height:100%;display:block}
+
+/* ── métricas ── */
+.mets{display:flex;flex-wrap:wrap;gap:3px}
+.met{
+  font-size:8.5px;letter-spacing:.05em;padding:3px 5px;border:1px solid var(--edge);
+  background:var(--bg3);color:var(--dim);
+}
+.met b{color:var(--txt);font-weight:600}
+.met.t{border-color:rgba(46,211,183,.35);color:var(--teal)}
+.met.a{border-color:rgba(255,138,61,.35);color:var(--amber)}
+.met.w{border-color:rgba(255,176,32,.4);color:var(--warn)}
+
+/* ── looks salvos ── */
+.looks{display:flex;flex-wrap:wrap;gap:4px}
+.look{
+  position:relative;padding:4px 20px 4px 7px;border:1px solid var(--edge);background:var(--bg3);
+  font-size:9px;color:var(--dim);transition:all .16s;
+}
+.look:hover{border-color:var(--teal);color:var(--txt)}
+.look x{
+  position:absolute;right:3px;top:50%;transform:translateY(-50%);width:12px;height:12px;
+  display:grid;place-items:center;font-size:11px;color:var(--dim2);
+}
+.look x:hover{color:var(--red)}
+.empty{font-size:9px;color:var(--dim2);font-style:italic}
+
+/* ── rodapé ── */
+.ft{
+  flex-shrink:0;padding:5px 10px;border-top:1px solid var(--edge);display:flex;align-items:center;gap:8px;
+  font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim2);
+}
+.ft-c{margin-left:auto;color:rgba(46,211,183,.45)}
+
+/* ── aviso ── */
+.note{
+  padding:6px 8px;background:rgba(255,176,32,.09);border:1px solid rgba(255,176,32,.28);
+  font-size:9px;line-height:1.5;color:var(--warn);margin-bottom:8px;
+}
+.note b{font-weight:700}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <span class="hd-logo">
+    <svg viewBox="0 0 21 21" fill="none">
+      <circle cx="10.5" cy="10.5" r="9.4" stroke="#ece7de" stroke-width="1.1"/>
+      <path d="M10.5 1.1a9.4 9.4 0 0 1 0 18.8z" fill="#ff8a3d"/>
+      <path d="M10.5 1.1a9.4 9.4 0 0 0 0 18.8z" fill="#2ed3b7"/>
+      <circle cx="10.5" cy="10.5" r="3" fill="#07070a"/>
+    </svg>
+  </span>
+  <div>
+    <div class="hd-t">Master Color</div>
+    <div class="hd-s">by Alex Ascencio</div>
+  </div>
+  <div class="hd-st"><i class="dot" id="dot"></i><span id="stat">Conectando…</span></div>
+</div>
+
+<div class="body">
+
+  <!-- clipe + referência -->
+  <div class="sec">
+    <div class="sec-h">Origem e destino <b id="modeTag">—</b></div>
+    <div class="pair">
+      <div class="slot" id="slotClip">
+        <canvas id="cvClip" width="320" height="200"></canvas>
+        <span class="slot-lbl">Clipe</span>
+        <div class="slot-hint">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2.5" width="12" height="9" stroke="currentColor"/><path d="M1 5.5h12" stroke="currentColor"/></svg>
+          Ler o frame
+        </div>
+      </div>
+      <div class="slot" id="slotRef">
+        <canvas id="cvRef" width="320" height="200"></canvas>
+        <span class="slot-lbl">Referência</span>
+        <div class="slot-hint">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 9.5V2m0 0L4 5m3-3l3 3M1.5 9.5V12h11V9.5" stroke="currentColor"/></svg>
+          Solte, cole ou clique
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn sm" id="btnReadClip">Ler clipe</button>
+      <button class="btn sm" id="btnPaste">Colar</button>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+  </div>
+
+  <!-- aviso de modo estimado -->
+  <div class="sec" id="secNote" hidden>
+    <div class="note">
+      <b>Modo estimativa.</b> Sem o frame do clipe, o cálculo parte de uma cena
+      neutra de referência. Clique em <b>Ler clipe</b> para o casamento real.
+    </div>
+  </div>
+
+  <!-- ajustes -->
+  <div class="sec">
+    <div class="sec-h">Ajuste</div>
+    <div class="ctl">
+      <div class="ctl-h"><span>Força</span><b id="strVal">100%</b></div>
+      <input type="range" id="strength" min="0" max="100" value="100">
+    </div>
+    <div class="sw" data-o="protectSkin" aria-pressed="true"><span>Proteger pele</span><i></i></div>
+    <div class="sw" data-o="matchColor" aria-pressed="true"><span>Casar cor</span><i></i></div>
+    <div class="sw" data-o="matchContrast" aria-pressed="true"><span>Casar contraste</span><i></i></div>
+  </div>
+
+  <!-- resultado -->
+  <div class="sec">
+    <div class="sec-h">Correção básica <b id="lookTag">—</b></div>
+    <div class="lum" id="lum"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">Rodas de cor</div>
+    <div class="wh">
+      <div class="wh-i"><div class="wh-d"><i class="wh-p" id="whS"></i></div><div class="wh-l">Sombras</div></div>
+      <div class="wh-i"><div class="wh-d"><i class="wh-p" id="whM"></i></div><div class="wh-l">Meios</div></div>
+      <div class="wh-i"><div class="wh-d"><i class="wh-p" id="whH"></i></div><div class="wh-l">Altas</div></div>
+    </div>
+  </div>
+
+  <!-- escopos -->
+  <div class="sec">
+    <div class="sec-h">Escopo <b id="distTag">—</b></div>
+    <div class="scope"><canvas id="cvScope" width="600" height="150"></canvas></div>
+    <div class="mets" id="mets" style="margin-top:7px"></div>
+  </div>
+
+  <!-- looks -->
+  <div class="sec">
+    <div class="sec-h">Looks salvos</div>
+    <div class="looks" id="looks"><span class="empty">nenhum ainda</span></div>
+    <div class="row"><button class="btn sm" id="btnSaveLook" disabled>Salvar este look</button></div>
+  </div>
+
+  <!-- aplicar -->
+  <div class="sec" style="border-bottom:0">
+    <button class="btn a" id="btnApply" disabled>Aplicar no clipe</button>
+    <div class="row">
+      <button class="btn sm" id="btnPreview" disabled>Antes / depois</button>
+      <button class="btn sm" id="btnReset">Resetar</button>
+    </div>
+  </div>
+</div>
+
+<div class="ft">
+  <span id="ftInfo">—</span>
+  <span class="ft-c">MASTER COLOR · ALEX ASCENCIO · v<span data-ascencio-version>2.0.0</span></span>
+</div>
+
+<script src="../lib/CSInterface.js"></script>
+<script src="color-engine.js"></script>
+<script src="panel.js"></script>
+<script src="../js/ascencio-updater.js"></script>
+<script>
+AscencioUpdater.init({
+  pluginId: 'com.alexascencio.mastercolor',
+  pluginName: 'Master Color',
+  accent: '#2ed3b7',
+  currentVersion: '2.0.0',
+  manifestUrl: 'https://raw.githubusercontent.com/Bielicoman/mastercolor-plugin/main/version.json',
+  fallbackUrl: 'https://github.com/Bielicoman/mastercolor-plugin/releases/latest'
+});
+</script>
+</body>
+</html>

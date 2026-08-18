@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Master Color — Casa o clipe com a referência</title>
+<meta name="description" content="Reference color match para Adobe Premiere Pro. Mede o seu clipe e a referência e escreve a diferença no Lumetri Color.">
+<meta name="author" content="Alex Ascencio">
+<meta name="theme-color" content="#07070A">
+<meta property="og:title" content="Master Color — Casa o clipe com a referência">
+<meta property="og:description" content="Mede o clipe e a referência e escreve a diferença no Lumetri Color.">
+<meta property="og:type" content="website">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;0,6..96,900;1,6..96,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   MASTER COLOR — "Camara Escura"
+   Alex Ascencio
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  --void:#07070A; --pit:#0C0C11; --slab:#121218; --slab-2:#191921;
+  --edge:rgba(255,255,255,.075); --edge-2:rgba(255,255,255,.14);
+  --cream:#ECE7DE; --dim:#8C8A95; --dim-2:#5D5B67;
+  --teal:#2ED3B7; --amber:#FF8A3D; --warn:#FFB020;
+  --serif:'Bodoni Moda',Georgia,serif;
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --ease:cubic-bezier(.2,.9,.25,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--void);color:var(--cream);font-family:var(--sans);
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(120% 70% at 8% -12%,rgba(46,211,183,.10),transparent 58%),
+    radial-gradient(110% 62% at 96% 8%,rgba(255,138,61,.09),transparent 55%)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:998;opacity:.055;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+main,nav,footer{position:relative;z-index:1}
+::selection{background:var(--amber);color:#0A0A0C}
+.wrap{max-width:1240px;margin:0 auto;padding:0 34px}
+@media(max-width:640px){.wrap{padding:0 20px}}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(7,7,10,.72);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--edge)}
+.nav-in{max-width:1240px;margin:0 auto;padding:0 34px;height:64px;display:flex;align-items:center;gap:30px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--cream)}
+.brand-txt{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:500}
+.brand-txt i{color:var(--dim-2);font-style:normal}
+.nav-links{display:flex;gap:26px;margin-left:auto}
+.nav-links a{font-size:13.5px;color:var(--dim);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--cream)}
+.nav-dl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;
+  color:var(--void);background:var(--cream);text-decoration:none;padding:10px 16px;transition:background .22s}
+.nav-dl:hover{background:var(--amber)}
+@media(max-width:860px){.nav-links{display:none}.nav-in{padding:0 20px}.nav-dl{margin-left:auto}}
+
+header{padding:96px 0 70px;overflow:hidden}
+.kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--teal);
+  display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.kicker::before{content:'';width:30px;height:1px;background:linear-gradient(90deg,var(--teal),transparent)}
+h1{font-family:var(--serif);font-weight:900;font-size:clamp(58px,11vw,150px);
+  line-height:.84;letter-spacing:-.035em;margin-bottom:26px}
+h1 .gr{background:linear-gradient(101deg,var(--teal) 0%,#8FE0C4 26%,var(--cream) 50%,#FFC48A 74%,var(--amber) 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:sweep 9s ease-in-out infinite}
+@keyframes sweep{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+h1 em{font-style:italic;font-weight:400}
+.lede{font-size:19.5px;color:var(--dim);max-width:40ch;margin-bottom:38px;font-weight:300}
+.lede b{color:var(--cream);font-weight:500}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:end}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:44px}}
+.meta-strip{display:flex;flex-wrap:wrap;gap:1px;background:var(--edge);border:1px solid var(--edge);margin-bottom:34px}
+.mc{flex:1;min-width:88px;background:var(--pit);padding:13px 16px}
+.mc-k{font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim-2);display:block;margin-bottom:5px}
+.mc-v{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--cream)}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:9px;text-decoration:none;cursor:pointer;
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:500;
+  padding:15px 24px;border:1px solid var(--edge-2);color:var(--cream);background:transparent;
+  position:relative;overflow:hidden;transition:border-color .25s,color .25s}
+.btn::after{content:'';position:absolute;inset:0;background:var(--cream);transform:translateY(101%);transition:transform .34s var(--ease);z-index:-1}
+.btn:hover{border-color:var(--cream);color:var(--void)}
+.btn:hover::after{transform:translateY(0)}
+.btn-hot{background:linear-gradient(96deg,var(--amber),#FFB067);border-color:transparent;color:#150C05;font-weight:600}
+.btn-hot::after{background:linear-gradient(96deg,#FFB067,var(--amber))}
+.btn-hot:hover{color:#150C05}
+
+/* tira de pelicula */
+.reel{position:relative;border:1px solid var(--edge);background:var(--pit);padding:13px 0}
+.reel::before,.reel::after{content:'';position:absolute;left:0;right:0;height:13px;
+  background-image:radial-gradient(circle,var(--void) 2.6px,transparent 2.8px);
+  background-size:20px 13px;background-position:center}
+.reel::before{top:0}.reel::after{bottom:0}
+.reel-track{display:flex;gap:1px;background:var(--edge);overflow:hidden}
+.frame{flex:1;aspect-ratio:16/10;position:relative;overflow:hidden;background:#000;min-width:0}
+.frame canvas{width:100%;height:100%;display:block}
+.frame-lbl{position:absolute;left:5px;bottom:5px;font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:rgba(255,255,255,.92);background:rgba(7,7,10,.62);padding:2px 5px}
+.reel-cap{display:flex;justify-content:space-between;padding:12px 14px 0;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim-2)}
+
+section{padding:104px 0;border-top:1px solid var(--edge)}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:42px}
+.sec-n{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--amber)}
+.sec-t{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.sec-rule{flex:1;height:1px;background:linear-gradient(90deg,var(--edge),transparent)}
+h2{font-family:var(--serif);font-weight:700;font-size:clamp(38px,5.6vw,64px);line-height:.95;letter-spacing:-.03em;margin-bottom:16px}
+h2 em{font-style:italic;font-weight:400;color:var(--teal)}
+.sec-lede{font-size:17px;color:var(--dim);max-width:54ch;margin-bottom:44px;font-weight:300}
+
+/* laboratorio */
+.lab{border:1px solid var(--edge);background:var(--pit);display:grid;grid-template-columns:356px 1fr}
+@media(max-width:1020px){.lab{grid-template-columns:1fr}}
+.lab-l{border-right:1px solid var(--edge);display:flex;flex-direction:column}
+@media(max-width:1020px){.lab-l{border-right:0;border-bottom:1px solid var(--edge)}}
+.lab-r{display:flex;flex-direction:column;min-width:0}
+.blk{padding:20px 22px;border-bottom:1px solid var(--edge)}
+.blk:last-child{border-bottom:0}
+.blk-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim-2);
+  display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.blk-h b{color:var(--teal);font-weight:500;letter-spacing:.1em;text-align:right}
+.blk-h b.warn{color:var(--warn)}
+
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slot{position:relative;aspect-ratio:16/10;background:#000;border:1px solid var(--edge);overflow:hidden;cursor:pointer;transition:border-color .2s}
+.slot:hover{border-color:var(--edge-2)}
+.slot.drag{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal)}
+.slot canvas{width:100%;height:100%;display:block}
+.slot-lbl{position:absolute;left:0;top:0;padding:3px 6px;font-family:var(--mono);font-size:8px;
+  letter-spacing:.12em;text-transform:uppercase;background:rgba(7,7,10,.78);color:var(--dim)}
+.slot-drop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(7,7,10,.74);opacity:0;transition:opacity .2s;pointer-events:none;
+  font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--cream)}
+.slot:hover .slot-drop,.slot.drag .slot-drop{opacity:1}
+
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.pz{aspect-ratio:16/10;border:1px solid var(--edge);background:#000;cursor:pointer;padding:0;overflow:hidden;
+  transition:border-color .18s,transform .18s}
+.pz canvas{width:100%;height:100%;display:block}
+.pz:hover{transform:translateY(-2px);border-color:var(--edge-2)}
+.pz[aria-pressed="true"]{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal)}
+
+.ctl{margin-bottom:14px}
+.ctl:last-child{margin-bottom:0}
+.ctl-h{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--dim);margin-bottom:6px}
+.ctl-h b{color:var(--cream);font-family:var(--mono);font-weight:500}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:var(--slab-2);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--teal);cursor:pointer;border-radius:0}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--teal);cursor:pointer;border:0;border-radius:0}
+.sw{display:flex;justify-content:space-between;align-items:center;padding:6px 0;cursor:pointer;font-size:12.5px;color:var(--dim)}
+.sw+.sw{border-top:1px solid rgba(255,255,255,.045)}
+.sw:hover{color:var(--cream)}
+.sw i{width:30px;height:16px;border:1px solid var(--edge-2);background:var(--slab);position:relative;flex-shrink:0;transition:all .2s}
+.sw i::after{content:'';position:absolute;top:1px;left:1px;width:12px;height:12px;background:var(--dim-2);transition:all .2s}
+.sw[aria-pressed="true"] i{background:var(--teal);border-color:var(--teal)}
+.sw[aria-pressed="true"] i::after{left:15px;background:#04120f}
+.sw[aria-pressed="true"]{color:var(--cream)}
+
+.compare{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;cursor:col-resize;user-select:none}
+.compare canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cvAfter{clip-path:inset(0 0 0 50%)}
+.divider{position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--cream);box-shadow:0 0 12px rgba(0,0,0,.85);pointer-events:none;z-index:3}
+.divider::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:34px;height:34px;border:1px solid var(--cream);border-radius:50%;background:rgba(7,7,10,.5)}
+.cmp-tag{position:absolute;top:11px;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 8px;background:rgba(7,7,10,.74);border:1px solid var(--edge-2);z-index:2;color:var(--cream)}
+.cmp-tag.l{left:11px}
+.cmp-tag.r{right:11px;border-color:rgba(46,211,183,.45);color:var(--teal)}
+
+.hist{height:70px;background:var(--void);border:1px solid var(--edge);overflow:hidden}
+.hist canvas{width:100%;height:100%;display:block}
+
+.lum{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+@media(max-width:620px){.lum{grid-template-columns:1fr}}
+.sl{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.sl-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.sl-k{font-size:11.5px;color:var(--dim)}
+.sl-v{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--cream);font-variant-numeric:tabular-nums}
+.sl-track{height:3px;background:var(--slab-2);position:relative}
+.sl-track::before{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--edge-2)}
+.sl-fill{position:absolute;top:0;bottom:0;background:var(--teal)}
+.sl-fill.pos{background:var(--amber)}
+
+.wheels{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.wheel{text-align:center}
+.wheel-disc{width:100%;max-width:84px;aspect-ratio:1;margin:0 auto 8px;border-radius:50%;position:relative;
+  background:conic-gradient(from 0deg,#FF5470,#FFB067,#F3E27A,#7BE495,#2ED3B7,#5AB6FF,#9C7BFF,#FF5470);filter:saturate(.85)}
+.wheel-disc::before{content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(18,18,24,.96) 8%,rgba(18,18,24,.5) 46%,transparent 72%)}
+.wheel-dot{position:absolute;top:50%;left:50%;width:9px;height:9px;border-radius:50%;background:var(--cream);
+  border:1px solid var(--void);transform:translate(-50%,-50%);transition:transform .5s var(--ease);
+  box-shadow:0 0 9px rgba(255,255,255,.5)}
+.wheel-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim-2)}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:6px 9px;border:1px solid var(--edge);color:var(--dim);background:var(--slab)}
+.chip b{color:var(--cream);font-weight:500}
+.chip.t{border-color:rgba(46,211,183,.4);color:var(--teal)}
+.chip.a{border-color:rgba(255,138,61,.4);color:var(--amber)}
+.chip.w{border-color:rgba(255,176,32,.42);color:var(--warn)}
+
+.verdict{padding:15px 22px;border-top:1px solid var(--edge);display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:linear-gradient(90deg,rgba(46,211,183,.055),transparent 60%)}
+.v-look{font-family:var(--serif);font-size:23px;font-weight:700;letter-spacing:-.02em;font-style:italic}
+.v-sep{width:1px;height:19px;background:var(--edge-2)}
+.v-note{font-size:12.5px;color:var(--dim);flex:1;min-width:190px}
+
+.caps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--edge);border:1px solid var(--edge)}
+@media(max-width:900px){.caps{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.caps{grid-template-columns:1fr}}
+.cap{background:var(--pit);padding:30px 24px 34px;position:relative;overflow:hidden;transition:background .3s}
+.cap:hover{background:var(--slab)}
+.cap::after{content:'';position:absolute;left:0;bottom:0;width:100%;height:1px;
+  background:linear-gradient(90deg,var(--teal),var(--amber));transform:scaleX(0);transform-origin:left;transition:transform .45s var(--ease)}
+.cap:hover::after{transform:scaleX(1)}
+.cap-n{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--dim-2);display:block;margin-bottom:20px}
+.cap h3{font-family:var(--serif);font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:9px;line-height:1.1}
+.cap p{font-size:14px;color:var(--dim);line-height:1.55;font-weight:300}
+
+.tabs{display:flex;gap:1px;background:var(--edge);border:1px solid var(--edge);border-bottom:0}
+.tab{flex:1;padding:16px 14px;border:0;background:var(--pit);cursor:pointer;text-align:left;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim-2);transition:background .22s,color .22s}
+.tab b{display:block;font-size:12.5px;letter-spacing:.03em;color:var(--dim);margin-top:5px;font-weight:500;transition:color .22s}
+.tab:hover{background:var(--slab)}
+.tab[aria-selected="true"]{background:var(--slab-2);color:var(--amber)}
+.tab[aria-selected="true"] b{color:var(--cream)}
+@media(max-width:700px){.tabs{flex-direction:column}}
+.panel{border:1px solid var(--edge);background:var(--pit);padding:34px 32px}
+.panel[hidden]{display:none}
+.step{display:grid;grid-template-columns:30px 1fr;gap:18px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.step:last-of-type{border-bottom:0}
+.step-n{font-family:var(--mono);font-size:11px;color:var(--teal);padding-top:3px}
+.step p{font-size:15px;color:var(--cream);font-weight:300}
+.step p b{font-weight:500}
+.step a{color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(255,138,61,.3)}
+.step small{display:block;font-size:13px;color:var(--dim-2);margin-top:5px}
+.code{display:flex;align-items:center;gap:12px;margin-top:11px;background:var(--void);
+  border:1px solid var(--edge);padding:11px 12px 11px 14px;font-family:var(--mono);font-size:11.5px;overflow-x:auto;color:var(--dim)}
+.code code{white-space:nowrap;flex:1}
+.code .tk{color:var(--teal)}
+.copy{flex-shrink:0;background:transparent;border:1px solid var(--edge-2);color:var(--dim);
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;cursor:pointer;transition:all .18s}
+.copy:hover{color:var(--cream);border-color:var(--cream)}
+.copy.done{background:var(--teal);border-color:var(--teal);color:var(--void)}
+.dl-row{display:flex;gap:11px;flex-wrap:wrap;margin-top:26px;padding-top:24px;border-top:1px solid var(--edge)}
+
+.specs{border:1px solid var(--edge)}
+.spec{display:grid;grid-template-columns:210px 1fr;gap:22px;padding:15px 24px;border-bottom:1px solid var(--edge)}
+.spec:last-child{border-bottom:0}
+.spec:nth-child(odd){background:rgba(255,255,255,.014)}
+.spec dt{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim-2);padding-top:3px}
+.spec dd{font-size:14.5px;color:var(--cream);font-weight:300}
+@media(max-width:640px){.spec{grid-template-columns:1fr;gap:5px}}
+
+footer{border-top:1px solid var(--edge);background:var(--pit)}
+.fgrid{display:grid;grid-template-columns:1.5fr 1fr 1fr;border-bottom:1px solid var(--edge)}
+@media(max-width:800px){.fgrid{grid-template-columns:1fr}}
+.fc{padding:32px 34px;border-right:1px solid var(--edge)}
+.fc:last-child{border-right:0}
+@media(max-width:800px){.fc{border-right:0;border-bottom:1px solid var(--edge)}}
+.fc-k{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim-2);display:block;margin-bottom:12px}
+.fc-name{font-family:var(--serif);font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1;margin-bottom:7px}
+.fc-sub{font-size:13.5px;color:var(--dim);font-weight:300}
+.flist{display:flex;flex-direction:column;gap:9px}
+.flist a{font-size:14px;color:var(--dim);text-decoration:none;transition:color .18s,padding-left .18s}
+.flist a:hover{color:var(--amber);padding-left:5px}
+.fbar{padding:18px 34px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim-2)}
+.fbar b{color:var(--cream);font-weight:500}
+
+.rv{opacity:0;transform:translateY(24px);transition:opacity .75s var(--ease),transform .75s var(--ease)}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <a href="../../index.html" class="brand">
+      <svg width="21" height="21" viewBox="0 0 21 21" fill="none">
+        <circle cx="10.5" cy="10.5" r="9.4" stroke="#ECE7DE" stroke-width="1.1"/>
+        <path d="M10.5 1.1a9.4 9.4 0 0 1 0 18.8z" fill="#FF8A3D"/>
+        <path d="M10.5 1.1a9.4 9.4 0 0 0 0 18.8z" fill="#2ED3B7"/>
+        <circle cx="10.5" cy="10.5" r="3" fill="#07070A"/>
+      </svg>
+      <span class="brand-txt">Ascencio <i>&#9656;</i> Master Color</span>
+    </a>
+    <div class="nav-links">
+      <a href="#lab">Laboratório</a>
+      <a href="#recursos">Recursos</a>
+      <a href="#instalar">Instalar</a>
+    </div>
+    <a href="MasterColor.zxp" class="nav-dl" download>Baixar</a>
+  </div>
+</nav>
+
+<main>
+<header>
+  <div class="wrap">
+    <div class="kicker rv">Reference color match</div>
+    <h1 class="rv">Casa<br><span class="gr">o look</span><em>.</em></h1>
+    <div class="hero-grid">
+      <div>
+        <p class="lede rv">Ele mede <b>o seu clipe</b> e <b>a referência</b>, e escreve a diferença entre os dois no Lumetri Color.</p>
+        <div class="meta-strip rv">
+          <div class="mc"><span class="mc-k">Versão</span><span class="mc-v">2.0.0</span></div>
+          <div class="mc"><span class="mc-k">Amostra</span><span class="mc-v">4.000 px</span></div>
+          <div class="mc"><span class="mc-k">Espaço</span><span class="mc-v">CIE L*a*b*</span></div>
+          <div class="mc"><span class="mc-k">Licença</span><span class="mc-v">MIT</span></div>
+        </div>
+        <div class="cta-row rv">
+          <a href="MasterColor.zxp" class="btn btn-hot" download>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v8m0 0L3 5.5M6.5 9L10 5.5M1.5 11.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+            Baixar .ZXP
+          </a>
+          <a href="#lab" class="btn">Ver o laboratório</a>
+        </div>
+      </div>
+      <div class="rv">
+        <div class="reel"><div class="reel-track" id="reelTrack"></div></div>
+        <div class="reel-cap"><span>O mesmo clipe, quatro referências</span><span id="reelName">—</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="lab">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="sec-n">01</span><span class="sec-t">Laboratório</span><span class="sec-rule"></span><span class="sec-t">Motor do plugin</span></div>
+    <h2 class="rv">A conta que ele <em>faz</em>.</h2>
+    <p class="sec-lede rv">Esta página carrega <code style="font-family:var(--mono);font-size:14px">color-engine.js</code> — o mesmo arquivo que roda dentro do Premiere. Troque o clipe, troque a referência, mexa na força.</p>
+
+    <div class="lab rv">
+      <div class="lab-l">
+        <div class="blk">
+          <div class="blk-h">Clipe e referência <b id="modeTag">casamento real</b></div>
+          <div class="duo">
+            <div class="slot" id="slotClip">
+              <canvas id="cvClip" width="320" height="200"></canvas>
+              <span class="slot-lbl">Clipe</span>
+              <span class="slot-drop">trocar</span>
+            </div>
+            <div class="slot" id="slotRef">
+              <canvas id="cvRef" width="320" height="200"></canvas>
+              <span class="slot-lbl">Referência</span>
+              <span class="slot-drop">trocar</span>
+            </div>
+          </div>
+          <div class="presets" id="presets"></div>
+          <input type="file" id="fileIn" accept="image/*" hidden>
+        </div>
+
+        <div class="blk">
+          <div class="blk-h">Ajuste</div>
+          <div class="ctl">
+            <div class="ctl-h"><span>Força</span><b id="strVal">100%</b></div>
+            <input type="range" id="strength" min="0" max="100" value="100">
+          </div>
+          <div class="sw" data-o="protectSkin" aria-pressed="true"><span>Proteger pele</span><i></i></div>
+          <div class="sw" data-o="matchColor" aria-pressed="true"><span>Casar cor</span><i></i></div>
+          <div class="sw" data-o="matchContrast" aria-pressed="true"><span>Casar contraste</span><i></i></div>
+        </div>
+
+        <div class="blk">
+          <div class="blk-h">Medição</div>
+          <div class="chips" id="chips"></div>
+        </div>
+
+        <div class="blk" style="margin-top:auto">
+          <div class="blk-h">Histograma · clipe e referência</div>
+          <div class="hist"><canvas id="cvHist" width="600" height="140"></canvas></div>
+        </div>
+      </div>
+
+      <div class="lab-r">
+        <div class="blk" style="padding:0">
+          <div class="compare" id="compare">
+            <canvas id="cvBefore" width="960" height="540"></canvas>
+            <canvas id="cvAfter" width="960" height="540"></canvas>
+            <span class="cmp-tag l">Clipe original</span>
+            <span class="cmp-tag r">Casado com a referência</span>
+            <div class="divider" id="divider"></div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <div class="blk-h">Lumetri Color <b>Correção básica</b></div>
+          <div class="lum" id="lumBox"></div>
+        </div>
+
+        <div class="blk">
+          <div class="blk-h">Rodas de cor</div>
+          <div class="wheels">
+            <div class="wheel"><div class="wheel-disc"><i class="wheel-dot" id="wSh"></i></div><div class="wheel-lbl">Sombras</div></div>
+            <div class="wheel"><div class="wheel-disc"><i class="wheel-dot" id="wMd"></i></div><div class="wheel-lbl">Meios-tons</div></div>
+            <div class="wheel"><div class="wheel-disc"><i class="wheel-dot" id="wHl"></i></div><div class="wheel-lbl">Altas luzes</div></div>
+          </div>
+        </div>
+
+        <div class="verdict">
+          <span class="v-look" id="vLook">—</span>
+          <span class="v-sep"></span>
+          <span class="v-note" id="vNote">Escolha uma referência.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="recursos">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="sec-n">02</span><span class="sec-t">Recursos</span><span class="sec-rule"></span></div>
+    <h2 class="rv">Quatro coisas.</h2>
+    <p class="sec-lede rv">Nada além disso.</p>
+    <div class="caps rv">
+      <div class="cap"><span class="cap-n">01</span><h3>Casa,<br>não neutraliza</h3><p>Mede os dois lados e move o clipe até a referência.</p></div>
+      <div class="cap"><span class="cap-n">02</span><h3>Pele<br>protegida</h3><p>Acha tons de pele e segura o desvio de croma neles.</p></div>
+      <div class="cap"><span class="cap-n">03</span><h3>Força<br>ajustável</h3><p>De 0 a 100%. Metade do caminho também é resposta.</p></div>
+      <div class="cap"><span class="cap-n">04</span><h3>Sem<br>estourar</h3><p>Se o branco for clipar, a correção recua sozinha.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="instalar">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="sec-n">03</span><span class="sec-t">Instalação</span><span class="sec-rule"></span><span class="sec-t">3 métodos</span></div>
+    <h2 class="rv">Pronto em um minuto.</h2>
+    <p class="sec-lede rv">Instale uma vez. Depois disso o painel se atualiza sozinho.</p>
+    <div class="rv">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-p="p1">Método 01<b>ZXP · recomendado</b></button>
+        <button class="tab" role="tab" aria-selected="false" data-p="p2">Método 02<b>ZIP manual</b></button>
+        <button class="tab" role="tab" aria-selected="false" data-p="p3">Método 03<b>Linha de comando</b></button>
+      </div>
+      <div class="panel" id="p1" role="tabpanel">
+        <div class="step"><span class="step-n">01</span><div><p>Baixe o <b>MasterColor.zxp</b>.</p><small>Windows e macOS, incluindo Apple Silicon.</small></div></div>
+        <div class="step"><span class="step-n">02</span><div><p>Abra o <a href="https://zxpinstaller.com/" target="_blank" rel="noopener">ZXP Installer</a> ou o <a href="https://install.anastasiy.com/" target="_blank" rel="noopener">Anastasiy's Extension Manager</a> e arraste o arquivo.</p></div></div>
+        <div class="step"><span class="step-n">03</span><div><p>Reabra o Premiere em <b>Janela &#8594; Extensões &#8594; Master Color</b>.</p><small>A partir daí o painel avisa e instala as versões novas sozinho.</small></div></div>
+        <div class="dl-row"><a href="MasterColor.zxp" class="btn btn-hot" download>Baixar .ZXP</a></div>
+      </div>
+      <div class="panel" id="p2" role="tabpanel" hidden>
+        <div class="step"><span class="step-n">01</span><div><p>Baixe o <b>MasterColor.zip</b> e extraia.</p></div></div>
+        <div class="step"><span class="step-n">02</span><div><p>Copie a pasta <b>com.alexascencio.mastercolor</b> para a pasta de extensões:</p>
+          <div class="code"><code><span class="tk">Windows</span> &nbsp;%APPDATA%\Adobe\CEP\extensions\</code><button class="copy" data-c="%APPDATA%\Adobe\CEP\extensions\">Copiar</button></div>
+          <div class="code"><code><span class="tk">macOS</span> &nbsp;&nbsp;&nbsp;~/Library/Application Support/Adobe/CEP/extensions/</code><button class="copy" data-c="~/Library/Application Support/Adobe/CEP/extensions/">Copiar</button></div>
+        </div></div>
+        <div class="step"><span class="step-n">03</span><div><p>Rode o comando do <b>Método 03</b> para liberar o modo desenvolvedor.</p></div></div>
+        <div class="dl-row"><a href="MasterColor.zip" class="btn" download>Baixar .ZIP</a></div>
+      </div>
+      <div class="panel" id="p3" role="tabpanel" hidden>
+        <div class="step"><span class="step-n">01</span><div><p><b>Windows</b> — PowerShell</p>
+          <div class="code"><code>reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f</code><button class="copy" data-c='reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f'>Copiar</button></div>
+        </div></div>
+        <div class="step"><span class="step-n">02</span><div><p><b>macOS</b> — Terminal</p>
+          <div class="code"><code>defaults write com.adobe.CSXS.11 PlayerDebugMode 1</code><button class="copy" data-c="defaults write com.adobe.CSXS.11 PlayerDebugMode 1">Copiar</button></div>
+        </div></div>
+        <div class="step"><span class="step-n">03</span><div><p>Reinicie o Premiere.</p><small>Só é preciso uma vez por máquina.</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head rv"><span class="sec-n">04</span><span class="sec-t">Especificações</span><span class="sec-rule"></span></div>
+    <div class="specs rv">
+      <dl>
+        <div class="spec"><dt>Entrada</dt><dd>PNG · JPG · WEBP · BMP · frame colado da área de transferência</dd></div>
+        <div class="spec"><dt>Frame do clipe</dt><dd>Exportado do playhead pela própria sequência ativa</dd></div>
+        <div class="spec"><dt>Amostragem</dt><dd>Até 4.000 pixels distribuídos por imagem</dd></div>
+        <div class="spec"><dt>Espaços de cor</dt><dd>sRGB linearizado &#8594; XYZ (D65) &#8594; CIE L*a*b*</dd></div>
+        <div class="spec"><dt>Saída Lumetri</dt><dd>Exposição · Contraste · Realces · Sombras · Brancos · Pretos · Temperatura · Matiz · Saturação · Vibração + 3 rodas</dd></div>
+        <div class="spec"><dt>Proteção</dt><dd>Trava anti-clipping e amortecimento em tons de pele</dd></div>
+        <div class="spec"><dt>Premiere Pro</dt><dd>2020 (14.0) até 2026+ · Windows e macOS</dd></div>
+        <div class="spec"><dt>Licença</dt><dd>MIT · código aberto</dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap" style="padding:0">
+    <div class="fgrid">
+      <div class="fc">
+        <span class="fc-k">Plugin</span>
+        <div class="fc-name">Master Color</div>
+        <div class="fc-sub">Reference color match para Adobe Premiere Pro</div>
+      </div>
+      <div class="fc">
+        <span class="fc-k">Suíte</span>
+        <div class="flist">
+          <a href="../../Safe%20Zones/index.html">Safe Zones</a>
+          <a href="../../MediaDownloader/index.html">Media Downloader</a>
+          <a href="../../My%20Packs%20Pro/index.html">My Packs Pro</a>
+        </div>
+      </div>
+      <div class="fc">
+        <span class="fc-k">Downloads</span>
+        <div class="flist">
+          <a href="MasterColor.zxp" download>MasterColor.zxp</a>
+          <a href="MasterColor.zip" download>MasterColor.zip</a>
+          <a href="version.json">version.json</a>
+        </div>
+      </div>
+    </div>
+    <div class="fbar">
+      <span>Desenhado e escrito por <b>Alex Ascencio</b></span>
+      <span>v2.0.0 · Estável · MIT</span>
+    </div>
+  </div>
+</footer>
+
+<script src="color-engine.js"></script>
+<script>
+(function(){
+'use strict';
+var MC=window.MasterColor,$=function(s){return document.querySelector(s)};
+
+/* ═══════════ cenas desenhadas ═══════════ */
+var SCENES=[
+ {name:'Teal & Orange',draw:function(c,w,h){
+   var g=c.createLinearGradient(0,0,0,h);
+   g.addColorStop(0,'#06303A');g.addColorStop(.45,'#0E5560');g.addColorStop(.68,'#C6551E');g.addColorStop(1,'#F2A03C');
+   c.fillStyle=g;c.fillRect(0,0,w,h);
+   c.fillStyle='#03181E';c.beginPath();c.moveTo(0,h*.72);c.lineTo(w*.3,h*.52);c.lineTo(w*.55,h*.68);c.lineTo(w*.8,h*.46);c.lineTo(w,h*.62);c.lineTo(w,h);c.lineTo(0,h);c.fill();
+   c.fillStyle='rgba(255,190,120,.55)';c.beginPath();c.arc(w*.74,h*.44,h*.11,0,7);c.fill();
+   skin(c,w,h,.38,.8,.13);
+ }},
+ {name:'Tungstênio',draw:function(c,w,h){
+   var g=c.createRadialGradient(w*.62,h*.34,h*.03,w*.62,h*.34,h*1.15);
+   g.addColorStop(0,'#FFD9A0');g.addColorStop(.28,'#C8823A');g.addColorStop(.62,'#5B2F1C');g.addColorStop(1,'#100806');
+   c.fillStyle=g;c.fillRect(0,0,w,h);
+   c.fillStyle='rgba(10,5,4,.8)';c.fillRect(0,h*.74,w,h*.26);
+   skin(c,w,h,.3,.62,.11);
+ }},
+ {name:'Neve alta',draw:function(c,w,h){
+   var g=c.createLinearGradient(0,0,0,h);
+   g.addColorStop(0,'#BFD6E8');g.addColorStop(.5,'#E4EDF4');g.addColorStop(1,'#F7F9FA');
+   c.fillStyle=g;c.fillRect(0,0,w,h);
+   c.fillStyle='#D2DEE7';c.beginPath();c.moveTo(0,h*.66);c.lineTo(w*.34,h*.4);c.lineTo(w*.62,h*.64);c.lineTo(w,h*.44);c.lineTo(w,h);c.lineTo(0,h);c.fill();
+   skin(c,w,h,.5,.72,.1);
+ }},
+ {name:'Verde flat',draw:function(c,w,h){
+   var g=c.createLinearGradient(0,0,w,h);
+   g.addColorStop(0,'#4A5545');g.addColorStop(.5,'#5E6B54');g.addColorStop(1,'#71765C');
+   c.fillStyle=g;c.fillRect(0,0,w,h);
+   c.fillStyle='rgba(58,66,52,.72)';c.fillRect(0,0,w,h*.3);
+   skin(c,w,h,.28,.66,.12);
+ }},
+ {name:'Neutro',draw:function(c,w,h){
+   var g=c.createLinearGradient(0,0,0,h);
+   g.addColorStop(0,'#5C6672');g.addColorStop(.46,'#8A8A88');g.addColorStop(.7,'#A79A88');g.addColorStop(1,'#6E6355');
+   c.fillStyle=g;c.fillRect(0,0,w,h);
+   c.fillStyle='rgba(232,228,220,.72)';c.beginPath();c.arc(w*.71,h*.3,h*.1,0,7);c.fill();
+   c.fillStyle='#4A4B4E';c.beginPath();c.moveTo(0,h*.7);c.lineTo(w*.26,h*.46);c.lineTo(w*.48,h*.66);c.lineTo(w*.74,h*.42);c.lineTo(w,h*.6);c.lineTo(w,h);c.lineTo(0,h);c.fill();
+   skin(c,w,h,.42,.74,.12);
+ }}
+];
+/* um rosto simples, para a proteção de pele ter o que proteger */
+function skin(c,w,h,x,y,r){
+  c.fillStyle='#C99A78';
+  c.beginPath();c.ellipse(w*x,h*y,w*r*.62,h*r*1.5,0,0,7);c.fill();
+  c.fillStyle='#B5866A';
+  c.beginPath();c.ellipse(w*x,h*(y+r*.9),w*r*.9,h*r*.9,0,0,7);c.fill();
+}
+
+var S={clipIdx:4,refIdx:0,opt:{strength:1,protectSkin:true,matchColor:true,matchContrast:true},
+       clipData:null,refData:null,clip:null,ref:null,params:null};
+
+var cvClip=$('#cvClip'),ctxClip=cvClip.getContext('2d',{willReadFrequently:true});
+var cvRef=$('#cvRef'),ctxRef=cvRef.getContext('2d',{willReadFrequently:true});
+var cvB=$('#cvBefore'),cvA=$('#cvAfter');
+var cvHist=$('#cvHist'),ctxHist=cvHist.getContext('2d');
+
+/* ═══════════ sliders ═══════════ */
+var SL=[['exposure','Exposição',2],['contrast','Contraste',0],['highlights','Realces',0],
+        ['shadows','Sombras',0],['whites','Brancos',0],['blacks','Pretos',0],
+        ['temperature','Temperatura',1],['tint','Matiz',1],['saturation','Saturação',1],['vibrance','Vibração',1]];
+var slRef={},animId=null;
+SL.forEach(function(s){
+  var d=document.createElement('div');d.className='sl';
+  d.innerHTML='<div class="sl-h"><span class="sl-k">'+s[1]+'</span><span class="sl-v">—</span></div>'+
+              '<div class="sl-track"><i class="sl-fill"></i></div>';
+  $('#lumBox').appendChild(d);
+  slRef[s[0]]={v:d.querySelector('.sl-v'),f:d.querySelector('.sl-fill'),dec:s[2],
+               cur:s[0]==='saturation'?100:0};
+});
+function setSlider(id,val,dec){
+  var R=slRef[id],L=MC.LIMITS[id],neutral=id==='saturation'?100:0;
+  var pv=(val-L.min)/(L.max-L.min)*100,pn=(neutral-L.min)/(L.max-L.min)*100;
+  R.f.style.left=Math.min(pv,pn)+'%';R.f.style.width=Math.abs(pv-pn)+'%';
+  R.f.classList.toggle('pos',val>neutral);
+  R.v.textContent=(val>0&&neutral===0?'+':'')+val.toFixed(dec);
+}
+function animate(target){
+  if(animId)cancelAnimationFrame(animId);
+  var from={},t0=null;
+  SL.forEach(function(s){from[s[0]]=slRef[s[0]].cur});
+  function frame(t){
+    if(!t0)t0=t;
+    var k=Math.min(1,(t-t0)/520),e=1-Math.pow(1-k,3);
+    SL.forEach(function(s){
+      var v=from[s[0]]+(target.basic[s[0]]-from[s[0]])*e;
+      slRef[s[0]].cur=v;setSlider(s[0],v,s[2]);
+    });
+    animId=k<1?requestAnimationFrame(frame):null;
+  }
+  animId=requestAnimationFrame(frame);
+}
+function setWheel(el,w){
+  var x=Math.max(-30,Math.min(30,(w.r-w.b)*900));
+  var y=Math.max(-30,Math.min(30,(w.b+w.r-2*w.g)*-600));
+  el.style.transform='translate(calc(-50% + '+x.toFixed(1)+'px),calc(-50% + '+y.toFixed(1)+'px))';
+}
+
+/* ═══════════ histograma duplo ═══════════ */
+function drawHist(){
+  var w=cvHist.width,h=cvHist.height;
+  ctxHist.clearRect(0,0,w,h);
+  ctxHist.fillStyle='rgba(255,255,255,.05)';
+  for(var g=1;g<4;g++)ctxHist.fillRect(w*g/4,0,1,h);
+  function curve(hist,stroke,fill){
+    var mx=1;for(var i=1;i<255;i++)if(hist[i]>mx)mx=hist[i];
+    ctxHist.beginPath();ctxHist.moveTo(0,h);
+    for(var k=0;k<256;k++)ctxHist.lineTo(k/255*w,h-Math.pow(hist[k]/mx,.55)*h*.92);
+    ctxHist.lineTo(w,h);ctxHist.closePath();
+    ctxHist.fillStyle=fill;ctxHist.fill();
+    ctxHist.strokeStyle=stroke;ctxHist.lineWidth=1.6;ctxHist.stroke();
+  }
+  if(S.clip)curve(S.clip.hist,'rgba(236,231,222,.5)','rgba(236,231,222,.06)');
+  if(S.ref)curve(S.ref.hist,'#2ED3B7','rgba(46,211,183,.12)');
+}
+
+/* ═══════════ chips ═══════════ */
+function drawChips(){
+  var box=$('#chips');box.innerHTML='';
+  if(!S.params)return;
+  var m=S.params.meta;
+  function chip(l,v,cls){
+    var e=document.createElement('span');
+    e.className='chip'+(cls?' '+cls:'');
+    e.innerHTML=l+' <b>'+v+'</b>';box.appendChild(e);
+  }
+  chip('ΔL',(m.deltaL>0?'+':'')+m.deltaL);
+  chip('Δa',(m.deltaA>0?'+':'')+m.deltaA);
+  chip('Δb',(m.deltaB>0?'+':'')+m.deltaB,'a');
+  chip('distância',m.distance,'t');
+  if(m.skinRatio>4)chip('pele',m.skinRatio+'%','t');
+  if(m.guard<1)chip('trava',Math.round(m.guard*100)+'%','w');
+}
+
+/* ═══════════ desenho ═══════════ */
+function paint(cv,ctx,idx){
+  SCENES[idx].draw(ctx,cv.width,cv.height);
+  return ctx.getImageData(0,0,cv.width,cv.height);
+}
+
+function recompute(){
+  S.params=MC.match(S.clip,S.ref,S.opt);
+  animate(S.params);
+  setWheel($('#wSh'),S.params.wheels.shadows);
+  setWheel($('#wMd'),S.params.wheels.midtones);
+  setWheel($('#wHl'),S.params.wheels.highlights);
+  drawHist();drawChips();
+  $('#vLook').textContent=S.params.meta.look;
+  var m=S.params.meta;
+  $('#vNote').textContent = m.guard<1
+    ? 'Trava anti-clipping ativa: a correção foi reduzida a '+Math.round(m.guard*100)+'%.'
+    : (m.skinDamp<1
+      ? 'Pele em '+m.skinRatio+'% do quadro — desvio de croma amortecido.'
+      : 'Sem risco de clipping. Correção aplicada por inteiro.');
+  // antes / depois
+  var out=MC.preview(S.clipData,S.params);
+  cvA.getContext('2d').putImageData(new ImageData(out,S.clipData.width,S.clipData.height),0,0);
+}
+
+function loadClip(idx){
+  S.clipIdx=idx;
+  S.clipData=paint(cvClip,ctxClip,idx);
+  S.clip=MC.analyze(S.clipData);
+  // o grande, para o comparador
+  var bctx=cvB.getContext('2d');
+  SCENES[idx].draw(bctx,cvB.width,cvB.height);
+  S.clipData=bctx.getImageData(0,0,cvB.width,cvB.height);
+  S.clip=MC.analyze(S.clipData);
+  recompute();
+}
+function loadRef(idx){
+  S.refIdx=idx;
+  S.refData=paint(cvRef,ctxRef,idx);
+  S.ref=MC.analyze(S.refData);
+  [].forEach.call($('#presets').children,function(b,i){b.setAttribute('aria-pressed',i===idx)});
+  recompute();
+}
+
+/* imagem do utilizador vira a referência */
+function loadFile(f){
+  if(!f||f.type.indexOf('image/')!==0)return;
+  var url=URL.createObjectURL(f),img=new Image();
+  img.onload=function(){
+    ctxRef.fillStyle='#000';ctxRef.fillRect(0,0,cvRef.width,cvRef.height);
+    var s=Math.max(cvRef.width/img.width,cvRef.height/img.height);
+    ctxRef.drawImage(img,(cvRef.width-img.width*s)/2,(cvRef.height-img.height*s)/2,img.width*s,img.height*s);
+    S.refData=ctxRef.getImageData(0,0,cvRef.width,cvRef.height);
+    S.ref=MC.analyze(S.refData);
+    [].forEach.call($('#presets').children,function(b){b.setAttribute('aria-pressed','false')});
+    URL.revokeObjectURL(url);
+    recompute();
+  };
+  img.src=url;
+}
+
+/* ═══════════ presets ═══════════ */
+SCENES.forEach(function(sc,i){
+  var b=document.createElement('button');
+  b.className='pz';b.type='button';b.title=sc.name;b.setAttribute('aria-pressed',i===0);
+  var cv=document.createElement('canvas');cv.width=120;cv.height=75;
+  sc.draw(cv.getContext('2d'),120,75);
+  b.appendChild(cv);
+  b.onclick=function(){loadRef(i)};
+  $('#presets').appendChild(b);
+});
+
+/* ═══════════ interações ═══════════ */
+var slotRef=$('#slotRef'),fileIn=$('#fileIn');
+slotRef.onclick=function(){fileIn.click()};
+fileIn.onchange=function(){loadFile(fileIn.files[0])};
+['dragenter','dragover'].forEach(function(e){slotRef.addEventListener(e,function(ev){ev.preventDefault();slotRef.classList.add('drag')})});
+['dragleave','drop'].forEach(function(e){slotRef.addEventListener(e,function(ev){ev.preventDefault();slotRef.classList.remove('drag')})});
+slotRef.addEventListener('drop',function(e){if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0])});
+
+$('#slotClip').onclick=function(){loadClip((S.clipIdx+1)%SCENES.length)};
+
+var str=$('#strength');
+str.oninput=function(){S.opt.strength=+str.value/100;$('#strVal').textContent=str.value+'%';recompute()};
+[].forEach.call(document.querySelectorAll('.sw'),function(sw){
+  sw.onclick=function(){
+    var on=sw.getAttribute('aria-pressed')!=='true';
+    sw.setAttribute('aria-pressed',on);S.opt[sw.dataset.o]=on;recompute();
+  };
+});
+
+(function(){
+  var box=$('#compare'),div=$('#divider'),after=cvA,on=false;
+  function set(e){
+    var r=box.getBoundingClientRect();
+    var p=Math.max(2,Math.min(98,(e.clientX-r.left)/r.width*100));
+    div.style.left=p+'%';after.style.clipPath='inset(0 0 0 '+p+'%)';
+  }
+  box.addEventListener('pointerdown',function(e){on=true;box.setPointerCapture(e.pointerId);set(e)});
+  box.addEventListener('pointermove',function(e){if(on)set(e)});
+  box.addEventListener('pointerup',function(){on=false});
+  box.addEventListener('pointercancel',function(){on=false});
+})();
+
+/* ═══════════ tira do hero: o mesmo clipe sob 4 referências ═══════════ */
+(function(){
+  var track=$('#reelTrack'),name=$('#reelName');
+  var base=document.createElement('canvas');base.width=320;base.height=200;
+  var bc=base.getContext('2d',{willReadFrequently:true});
+  SCENES[4].draw(bc,320,200);
+  var baseData=bc.getImageData(0,0,320,200);
+  var baseProfile=MC.analyze(baseData);
+
+  for(var i=0;i<4;i++){
+    (function(i){
+      var f=document.createElement('div');f.className='frame';
+      var cv=document.createElement('canvas');cv.width=320;cv.height=200;
+      var rc=document.createElement('canvas');rc.width=320;rc.height=200;
+      var rctx=rc.getContext('2d',{willReadFrequently:true});
+      SCENES[i].draw(rctx,320,200);
+      var refP=MC.analyze(rctx.getImageData(0,0,320,200));
+      var p=MC.match(baseProfile,refP);
+      var out=MC.preview(baseData,p);
+      cv.getContext('2d').putImageData(new ImageData(out,320,200),0,0);
+      f.appendChild(cv);
+      var l=document.createElement('span');l.className='frame-lbl';
+      l.textContent=SCENES[i].name;
+      f.appendChild(l);
+      track.appendChild(f);
+    })(i);
+  }
+  var i=0;
+  name.textContent=SCENES[0].name;
+  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    setInterval(function(){i=(i+1)%4;name.textContent=SCENES[i].name},2800);
+  }
+})();
+
+/* ═══════════ abas / copiar / revelação ═══════════ */
+[].forEach.call(document.querySelectorAll('.tab'),function(t){
+  t.onclick=function(){
+    [].forEach.call(document.querySelectorAll('.tab'),function(x){x.setAttribute('aria-selected','false')});
+    [].forEach.call(document.querySelectorAll('.panel'),function(x){x.hidden=true});
+    t.setAttribute('aria-selected','true');$('#'+t.dataset.p).hidden=false;
+  };
+});
+[].forEach.call(document.querySelectorAll('.copy'),function(b){
+  b.onclick=function(){
+    navigator.clipboard.writeText(b.dataset.c).then(function(){
+      b.textContent='Copiado';b.classList.add('done');
+      setTimeout(function(){b.textContent='Copiar';b.classList.remove('done')},1500);
+    });
+  };
+});
+var io=new IntersectionObserver(function(es){
+  es.forEach(function(e){
+    if(e.isIntersecting){
+      var sib=[].slice.call(e.target.parentNode.children).filter(function(x){return x.classList.contains('rv')});
+      e.target.style.transitionDelay=(Math.min(sib.indexOf(e.target),5)*80)+'ms';
+      e.target.classList.add('in');io.unobserve(e.target);
+    }
+  });
+},{threshold:.1,rootMargin:'0px 0px -8% 0px'});
+[].forEach.call(document.querySelectorAll('.rv'),function(el){io.observe(el)});
+
+/* arranque */
+loadClip(4);
+loadRef(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  ExtensionBundleId="com.alexascencio.mastercolor"
+  ExtensionBundleVersion="2.0.0"
+  ExtensionBundleName="Master Color"
+  Version="8.0">
+
+  <ExtensionList>
+    <Extension Id="com.alexascencio.mastercolor.panel" Version="2.0.0"/>
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <!-- Premiere Pro 2020 (14.0) -> 2026+ -->
+      <Host Name="PPRO" Version="[14.0,100.0]"/>
+    </HostList>
+    <LocaleList>
+      <Locale Code="All"/>
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="8.0"/>
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <Extension Id="com.alexascencio.mastercolor.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./src/index.html</MainPath>
+          <ScriptPath>./src/lumetri-bridge.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Master Color</Menu>
+          <Geometry>
+            <Size><Height>560</Height><Width>340</Width></Size>
+            <MinSize><Height>360</Height><Width>280</Width></MinSize>
+            <MaxSize><Height>2400</Height><Width>900</Width></MaxSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

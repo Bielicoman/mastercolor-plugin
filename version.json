@@ -1,0 +1,22 @@
+{
+  "pluginId": "com.alexascencio.mastercolor",
+  "name": "Master Color",
+  "version": "2.0.0",
+  "channel": "stable",
+  "author": "Alex Ascencio",
+  "type": "CEP",
+  "host": "PPRO",
+  "hostVersionMin": "14.0",
+  "hostVersionMax": "100.0",
+  "platform": [
+    "Windows",
+    "macOS"
+  ],
+  "releaseDate": "2026-08-18",
+  "downloadUrl": "https://github.com/Bielicoman/mastercolor-plugin/raw/main/MasterColor.zxp",
+  "zipUrl": "https://github.com/Bielicoman/mastercolor-plugin/archive/refs/heads/main.zip",
+  "mandatory": false,
+  "changelog": {
+    "2.0.0": "Master Color: casamento real entre clipe e referência, força ajustável e proteção de pele"
+  }
+}

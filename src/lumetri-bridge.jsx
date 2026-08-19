@@ -88,7 +88,9 @@ function mcSelection() {
                 var tr = seq.videoTracks[v];
                 for (var c = 0; c < tr.clips.numItems; c++) {
                     var cl = tr.clips[c];
-                    if (cl.start.seconds <= t && cl.end.seconds > t) { sel.push(cl); break; }
+                    var cStart = cl.start ? cl.start.seconds : 0;
+                    var cEnd = cl.end ? cl.end.seconds : (cStart + (cl.duration ? cl.duration.seconds : 0));
+                    if (cStart <= t && cEnd >= t) { sel.push(cl); break; }
                 }
                 if (sel.length) break;
             }
@@ -117,12 +119,12 @@ function getSelectedClipsInfo() {
 /* ═══════════════ exportar o frame atual ═══════════════ */
 
 /**
- * Exporta o frame sob o playhead para PNG. É o que permite o casamento real
- * entre o clipe e a referência.
+ * Exporta o frame sob o playhead para PNG ou localiza a mídia do clipe ativo.
  *
- * Tenta, nesta ordem:
- *   1. Sequence.exportFramePNG (Premiere 14+)
- *   2. QE DOM  (versões antigas)
+ * Estratégia multi-camadas:
+ *   1. Sequence.exportFramePNG nativo (ticks, Time, seconds)
+ *   2. QE DOM (seconds, timecode, CTI)
+ *   3. Fonte do Clipe no disco (mediaPath + offset em segundos para leitura instantânea)
  */
 function exportCurrentFrame(argJson) {
     try {
@@ -130,18 +132,35 @@ function exportCurrentFrame(argJson) {
         var out = arg.path;
         if (!out) return mcErr('caminho não informado');
 
+        // Garante barras normais (POSIX) para o ExtendScript File e exportFramePNG
+        out = String(out).replace(/\\/g, '/');
+
         var seq = mcSeq();
         if (!seq) return mcErr('Nenhuma sequência aberta');
 
         var t = seq.getPlayerPosition();
 
-        // 1. API moderna
+        // 1. API moderna Sequence.exportFramePNG
         if (typeof seq.exportFramePNG === 'function') {
             try {
+                if (t && t.ticks) {
+                    seq.exportFramePNG(String(t.ticks), out);
+                    var f1a = new File(out);
+                    if (f1a.exists && f1a.length > 0) return mcJSON({ ok: true, path: out, via: 'exportFramePNG_ticks' });
+                }
+            } catch (e1a) {}
+
+            try {
                 seq.exportFramePNG(t, out);
-                var f1 = new File(out);
-                if (f1.exists && f1.length > 0) return mcJSON({ ok: true, path: out, via: 'exportFramePNG' });
-            } catch (e1) {}
+                var f1b = new File(out);
+                if (f1b.exists && f1b.length > 0) return mcJSON({ ok: true, path: out, via: 'exportFramePNG_time' });
+            } catch (e1b) {}
+
+            try {
+                seq.exportFramePNG(t.seconds, out);
+                var f1c = new File(out);
+                if (f1c.exists && f1c.length > 0) return mcJSON({ ok: true, path: out, via: 'exportFramePNG_sec' });
+            } catch (e1c) {}
         }
 
         // 2. QE DOM
@@ -149,15 +168,63 @@ function exportCurrentFrame(argJson) {
             if (typeof qe === 'undefined' || !qe) app.enableQE();
             if (typeof qe !== 'undefined' && qe && qe.project && qe.project.getActiveSequence) {
                 var qseq = qe.project.getActiveSequence();
-                if (qseq && qseq.exportFramePNG) {
-                    qseq.exportFramePNG(t.seconds, out);
-                    var f2 = new File(out);
-                    if (f2.exists && f2.length > 0) return mcJSON({ ok: true, path: out, via: 'qe' });
+                if (qseq) {
+                    if (typeof qseq.exportFramePNG === 'function') {
+                        try {
+                            qseq.exportFramePNG(t.seconds, out);
+                            var f2a = new File(out);
+                            if (f2a.exists && f2a.length > 0) return mcJSON({ ok: true, path: out, via: 'qe_sec' });
+                        } catch (e2a) {}
+
+                        try {
+                            if (qseq.CTI && qseq.CTI.getTimecode) {
+                                qseq.exportFramePNG(qseq.CTI.getTimecode(), out);
+                                var f2b = new File(out);
+                                if (f2b.exists && f2b.length > 0) return mcJSON({ ok: true, path: out, via: 'qe_tc' });
+                            }
+                        } catch (e2b) {}
+                    }
+                    if (qseq.CTI && typeof qseq.CTI.exportFramePNG === 'function') {
+                        try {
+                            qseq.CTI.exportFramePNG(out);
+                            var f2c = new File(out);
+                            if (f2c.exists && f2c.length > 0) return mcJSON({ ok: true, path: out, via: 'qe_cti' });
+                        } catch (e2c) {}
+                    }
                 }
             }
         } catch (e2) {}
 
-        return mcErr('esta versão do Premiere não exporta frame');
+        // 3. Fallback infalível: Localiza o clipe de vídeo ativo sob o playhead
+        try {
+            var selRes = mcSelection();
+            if (selRes.clips && selRes.clips.length > 0) {
+                var cl = selRes.clips[0];
+                var pItem = cl.projectItem;
+                if (pItem) {
+                    var mPath = '';
+                    try { if (pItem.getMediaPath) mPath = pItem.getMediaPath(); } catch (eMedia) {}
+                    if (!mPath) {
+                        try { if (pItem.treePath) mPath = pItem.treePath; } catch (eTree) {}
+                    }
+                    if (mPath) {
+                        var clStart = (cl.start && typeof cl.start.seconds === 'number') ? cl.start.seconds : 0;
+                        var inPt = (cl.inPoint && typeof cl.inPoint.seconds === 'number') ? cl.inPoint.seconds : 0;
+                        var playhead = t.seconds || 0;
+                        var offsetSec = Math.max(0, (playhead - clStart) + inPt);
+                        return mcJSON({
+                            ok: true,
+                            via: 'mediaSource',
+                            mediaPath: mPath,
+                            timeSec: offsetSec,
+                            name: cl.name || pItem.name || 'frame'
+                        });
+                    }
+                }
+            }
+        } catch (e3) {}
+
+        return mcErr('Nenhum clipe de vídeo encontrado sob o playhead');
     } catch (e) { return mcErr(e); }
 }
 

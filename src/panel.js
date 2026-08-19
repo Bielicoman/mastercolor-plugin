@@ -29,7 +29,7 @@
   }
 
   function req(m) { try { return window.require ? window.require(m) : null; } catch (e) { return null; } }
-  var fs = req('fs'), pathM = req('path'), os = req('os');
+  var fs = req('fs'), pathM = req('path'), os = req('os'), cp = req('child_process');
 
   /* ═══════════════ estado ═══════════════ */
   var S = {
@@ -216,9 +216,134 @@
   }
 
   /* ═══════════════ ler o frame do clipe ═══════════════ */
+  function extractFrameFromSource(mediaPath, timeSec, clipName) {
+    var ext = (mediaPath.split('.').pop() || '').toLowerCase();
+    var isImage = ['jpg', 'jpeg', 'png', 'tif', 'tiff', 'bmp', 'webp'].indexOf(ext) >= 0;
+
+    // Imagem estática: lê diretamente com fs ou Image()
+    if (isImage) {
+      try {
+        if (fs && fs.readFileSync) {
+          var buf = fs.readFileSync(mediaPath);
+          var b64 = buf.toString('base64');
+          var mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+          var img = new Image();
+          img.onload = function () {
+            S.clipData = drawInto(ctxClip, cvClip, img);
+            S.clip = MC.analyze(S.clipData);
+            $('#slotClip').classList.add('filled');
+            status('Clipe lido (' + (clipName || 'imagem').slice(0, 18) + ')', 'on');
+            recompute();
+          };
+          img.onerror = function () { status('Imagem ilegível', 'err'); };
+          img.src = 'data:' + mime + ';base64,' + b64;
+          return;
+        }
+      } catch (eImg) {}
+    }
+
+    // Vídeo: carrega via elemento <video> HTML5 no Chromium do CEP
+    var norm = mediaPath.replace(/\\/g, '/');
+    var fileUrl = norm.startsWith('/') ? 'file://' + encodeURI(norm) : 'file:///' + encodeURI(norm);
+    var vid = document.createElement('video');
+    vid.crossOrigin = 'anonymous';
+    vid.muted = true;
+    vid.preload = 'auto';
+    vid.src = fileUrl;
+
+    var captured = false;
+    function capture() {
+      if (captured) return;
+      captured = true;
+      try {
+        S.clipData = drawInto(ctxClip, cvClip, vid);
+        S.clip = MC.analyze(S.clipData);
+        $('#slotClip').classList.add('filled');
+        status('Clipe lido (' + (clipName || 'vídeo').slice(0, 18) + ')', 'on');
+        recompute();
+      } catch (eCap) {
+        status('Erro ao capturar frame', 'err');
+      }
+    }
+
+    vid.onloadedmetadata = function () {
+      var targetTime = Math.max(0, Math.min(timeSec || 0, vid.duration || 9999));
+      vid.currentTime = targetTime;
+    };
+    vid.onseeked = function () {
+      capture();
+    };
+
+    // Timeout de segurança se o codec precisar de FFmpeg (ex: ProRes/DNxHD)
+    var timer = setTimeout(function () {
+      if (!captured) {
+        extractViaFfmpeg(mediaPath, timeSec, clipName);
+      }
+    }, 1500);
+
+    vid.onerror = function () {
+      clearTimeout(timer);
+      extractViaFfmpeg(mediaPath, timeSec, clipName);
+    };
+  }
+
+  function extractViaFfmpeg(mediaPath, timeSec, clipName) {
+    if (!cp || !os || !pathM) {
+      status('Codec não suportado no preview', 'err');
+      return;
+    }
+    var outPng = pathM.join(os.tmpdir(), 'mastercolor-ffmpeg-' + Date.now() + '.png');
+    var appData = (typeof process !== 'undefined' && process.env && process.env.APPDATA) ? process.env.APPDATA : '';
+    var candidates = [
+      'ffmpeg',
+      pathM.join(appData, 'Adobe', 'CEP', 'extensions', 'com.alexascencio.mypackspro', 'bin', 'win', 'ffmpeg.exe'),
+      pathM.join(appData, 'MyPacksPro', 'bin', 'win', 'ffmpeg.exe'),
+      'd:\\IA\\02_Plugins\\ADOBE PREMIERE\\My Packs Pro\\bin\\win\\ffmpeg.exe'
+    ];
+
+    function tryNextFfmpeg(idx) {
+      if (idx >= candidates.length) {
+        status('Instale FFmpeg para codecs PRO', 'err');
+        return;
+      }
+      var bin = candidates[idx];
+      var args = [
+        '-ss', String(timeSec || 0),
+        '-i', mediaPath,
+        '-vframes', '1',
+        '-vf', 'scale=-2:240:flags=fast_bilinear',
+        '-y',
+        outPng
+      ];
+      var cmd = '"' + bin + '" ' + args.map(function (a) { return '"' + a + '"'; }).join(' ');
+      cp.exec(cmd, { timeout: 4000 }, function (err) {
+        if (!err && fs && fs.existsSync(outPng)) {
+          try {
+            var buf = fs.readFileSync(outPng);
+            var b64 = buf.toString('base64');
+            var img = new Image();
+            img.onload = function () {
+              S.clipData = drawInto(ctxClip, cvClip, img);
+              S.clip = MC.analyze(S.clipData);
+              $('#slotClip').classList.add('filled');
+              status('Clipe lido (' + (clipName || 'frame').slice(0, 18) + ')', 'on');
+              try { fs.unlinkSync(outPng); } catch (e) {}
+              recompute();
+            };
+            img.src = 'data:image/png;base64,' + b64;
+            return;
+          } catch (eRead) {}
+        }
+        tryNextFfmpeg(idx + 1);
+      });
+    }
+
+    tryNextFfmpeg(0);
+  }
+
   function readClipFrame() {
     if (!cs) { status('Sem Premiere', 'err'); return; }
-    status('Exportando frame…', 'busy');
+    status('Lendo frame…', 'busy');
     $('#btnReadClip').disabled = true;
 
     var out = null;
@@ -234,10 +359,16 @@
     evalJSON('exportCurrentFrame', { path: out }, function (res) {
       $('#btnReadClip').disabled = false;
       if (!res || !res.ok) {
-        status(res && res.error ? String(res.error).slice(0, 30) : 'Falha ao exportar', 'err');
+        status(res && res.error ? String(res.error).slice(0, 30) : 'Falha ao ler frame', 'err');
         return;
       }
-      // lê o PNG do disco como data URL (file:// direto costuma ser bloqueado)
+
+      if (res.via === 'mediaSource' && res.mediaPath) {
+        extractFrameFromSource(res.mediaPath, res.timeSec, res.name);
+        return;
+      }
+
+      // lê o PNG exportado do disco como data URL
       try {
         var buf = fs.readFileSync(res.path);
         var b64 = buf.toString('base64');

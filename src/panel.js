@@ -179,8 +179,10 @@
   function drawInto(ctx, cv, img) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, cv.width, cv.height);
-    var s = Math.max(cv.width / img.width, cv.height / img.height);
-    var w = img.width * s, h = img.height * s;
+    var iw = img.videoWidth || img.naturalWidth || img.width || 1;
+    var ih = img.videoHeight || img.naturalHeight || img.height || 1;
+    var s = Math.max(cv.width / iw, cv.height / ih);
+    var w = iw * s, h = ih * s;
     ctx.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
     return ctx.getImageData(0, 0, cv.width, cv.height);
   }
@@ -634,6 +636,9 @@
         status(info.sequence ? info.sequence.slice(0, 18) : 'Pronto', 'on');
         $('#ftInfo').textContent = info.project ? info.project.slice(0, 22) : 'Premiere';
         if (S.params) $('#btnApply').disabled = false;
+        setTimeout(function () {
+          if (!S.clipData) readClipFrame();
+        }, 300);
       } else {
         status('Abra uma sequência', 'err');
       }

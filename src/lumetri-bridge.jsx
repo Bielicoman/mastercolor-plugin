@@ -230,21 +230,57 @@ function exportCurrentFrame(argJson) {
 
 /* ═══════════════ Lumetri ═══════════════ */
 
-var MC_LUMETRI_NAMES = ['Lumetri Color', 'Cor Lumetri', 'Lumetri-Farbe', 'Couleur Lumetri', 'Color Lumetri'];
+var MC_LUMETRI_NAMES = [
+    'Lumetri Color',
+    'Cor Lumetri',
+    'Cor de Lumetri',
+    'Lumetri-Farbe',
+    'Couleur Lumetri',
+    'Color Lumetri',
+    'Lumetri'
+];
 
 function mcIsLumetri(name) {
     if (!name) return false;
-    for (var i = 0; i < MC_LUMETRI_NAMES.length; i++) {
-        if (name === MC_LUMETRI_NAMES[i]) return true;
-    }
-    return name.indexOf('Lumetri') >= 0;
+    var s = String(name).toLowerCase();
+    return s.indexOf('lumetri') >= 0 || s.indexOf('cor lumetri') >= 0;
 }
 
 function mcFindLumetri(clip) {
     try {
+        if (!clip || !clip.components) return null;
         for (var i = 0; i < clip.components.numItems; i++) {
-            if (mcIsLumetri(clip.components[i].displayName)) return clip.components[i];
+            var c = clip.components[i];
+            if (c && (mcIsLumetri(c.displayName) || mcIsLumetri(c.name) || mcIsLumetri(c.matchName))) return c;
         }
+    } catch (e) {}
+    return null;
+}
+
+function mcGetLumetriQE() {
+    try {
+        if (typeof qe === 'undefined' || !qe) app.enableQE();
+        if (typeof qe === 'undefined' || !qe || !qe.project) return null;
+
+        for (var i = 0; i < MC_LUMETRI_NAMES.length; i++) {
+            try {
+                var fx = qe.project.getVideoEffectByName(MC_LUMETRI_NAMES[i]);
+                if (fx) return fx;
+            } catch (e1) {}
+            try {
+                var fx2 = qe.project.getVideoEffectByName(MC_LUMETRI_NAMES[i], true);
+                if (fx2) return fx2;
+            } catch (e2) {}
+        }
+
+        try {
+            if (qe.project.numVideoEffects) {
+                for (var j = 0; j < qe.project.numVideoEffects; j++) {
+                    var item = qe.project.getVideoEffectAt(j);
+                    if (item && item.name && mcIsLumetri(item.name)) return item;
+                }
+            }
+        } catch (e3) {}
     } catch (e) {}
     return null;
 }
@@ -252,15 +288,55 @@ function mcFindLumetri(clip) {
 function mcAddLumetri(clip) {
     try {
         if (typeof qe === 'undefined' || !qe) app.enableQE();
+        if (typeof qe === 'undefined' || !qe || !qe.project) return null;
+
+        var fx = mcGetLumetriQE();
+        if (!fx) return null;
+
         var seq = mcSeq();
         var qseq = qe.project.getActiveSequence();
-        for (var v = 0; v < qseq.numVideoTracks; v++) {
-            var qtr = qseq.getVideoTrackAt(v);
-            for (var c = 0; c < qtr.numItems; c++) {
-                var qc = qtr.getItemAt(c);
-                if (qc && qc.name === clip.name) {
-                    qc.addVideoEffect(qe.project.getVideoEffectByName('Lumetri Color'));
-                    return mcFindLumetri(clip);
+        if (!seq || !qseq) return null;
+
+        var cStart = (clip.start && typeof clip.start.seconds === 'number') ? clip.start.seconds : -1;
+
+        // 1. Tenta mapear diretamente por track index e clip index exatos
+        for (var v = 0; v < seq.videoTracks.numTracks; v++) {
+            var tr = seq.videoTracks[v];
+            var qtr = (v < qseq.numVideoTracks) ? qseq.getVideoTrackAt(v) : null;
+            if (!qtr) continue;
+
+            for (var c = 0; c < tr.clips.numItems; c++) {
+                var isMatch = (tr.clips[c] === clip);
+                if (!isMatch && clip.nodeId && tr.clips[c].nodeId === clip.nodeId) isMatch = true;
+                if (!isMatch && cStart >= 0 && tr.clips[c].start && Math.abs(tr.clips[c].start.seconds - cStart) < 0.02) isMatch = true;
+
+                if (isMatch) {
+                    if (c < qtr.numItems) {
+                        var targetQc = qtr.getItemAt(c);
+                        if (targetQc && targetQc.addVideoEffect) {
+                            try { targetQc.addVideoEffect(fx); } catch (eAdd1) {}
+                            var found = mcFindLumetri(clip);
+                            if (found) return found;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Tenta nos clipes QE por tempo / nome
+        for (var v2 = 0; v2 < qseq.numVideoTracks; v2++) {
+            var qtr2 = qseq.getVideoTrackAt(v2);
+            for (var c2 = 0; c2 < qtr2.numItems; c2++) {
+                var qc = qtr2.getItemAt(c2);
+                if (qc) {
+                    var qStart = (qc.start && typeof qc.start.seconds === 'number') ? qc.start.seconds : -2;
+                    if (Math.abs(qStart - cStart) < 0.05 || qc.name === clip.name) {
+                        if (qc.addVideoEffect) {
+                            try { qc.addVideoEffect(fx); } catch (eAdd2) {}
+                            var found2 = mcFindLumetri(clip);
+                            if (found2) return found2;
+                        }
+                    }
                 }
             }
         }
@@ -270,27 +346,30 @@ function mcAddLumetri(clip) {
 
 /** Mapa: chave do painel -> nomes possíveis da propriedade no Lumetri. */
 var MC_MAP = {
-    exposure:    ['Exposure', 'Exposição', 'Belichtung'],
-    contrast:    ['Contrast', 'Contraste', 'Kontrast'],
-    highlights:  ['Highlights', 'Realces', 'Lichter'],
-    shadows:     ['Shadows', 'Sombras', 'Tiefen'],
-    whites:      ['Whites', 'Brancos', 'Weiß'],
-    blacks:      ['Blacks', 'Pretos', 'Schwarz'],
-    temperature: ['Temperature', 'Temperatura', 'Farbtemperatur'],
-    tint:        ['Tint', 'Matiz', 'Tonung', 'Tonwert'],
-    saturation:  ['Saturation', 'Saturação', 'Sättigung'],
-    vibrance:    ['Vibrance', 'Vibração', 'Dynamik']
+    exposure:    ['Exposure', 'Exposição', 'Exposicion', 'Belichtung', 'Basic Exposure'],
+    contrast:    ['Contrast', 'Contraste', 'Kontrast', 'Basic Contrast'],
+    highlights:  ['Highlights', 'Realces', 'Lichter', 'Altas luces', 'Basic Highlights'],
+    shadows:     ['Shadows', 'Sombras', 'Tiefen', 'Basic Shadows'],
+    whites:      ['Whites', 'Brancos', 'Weiß', 'Blancos', 'Basic Whites'],
+    blacks:      ['Blacks', 'Pretos', 'Schwarz', 'Negros', 'Basic Blacks'],
+    temperature: ['Temperature', 'Temperatura', 'Farbtemperatur', 'Temp'],
+    tint:        ['Tint', 'Matiz', 'Tonung', 'Tonwert', 'Tinte'],
+    saturation:  ['Saturation', 'Saturação', 'Sättigung', 'Saturacion', 'Sat'],
+    vibrance:    ['Vibrance', 'Vibração', 'Dynamik', 'Intensidad']
 };
 
 function mcSetProp(lumetri, names, value) {
     try {
         for (var i = 0; i < lumetri.properties.numItems; i++) {
             var p = lumetri.properties[i];
-            var dn = p.displayName;
+            var dn = (p.displayName || p.name || '').toLowerCase();
             for (var n = 0; n < names.length; n++) {
-                if (dn === names[n]) {
+                var target = names[n].toLowerCase();
+                if (dn === target || dn.indexOf(target) >= 0) {
                     try { p.setValue(value, true); return true; } catch (e) {
-                        try { p.setValue(value); return true; } catch (e2) { return false; }
+                        try { p.setValue(value); return true; } catch (e2) {
+                            try { p.setValue(Number(value)); return true; } catch (e3) { return false; }
+                        }
                     }
                 }
             }
@@ -327,7 +406,7 @@ function applyColorGrade(paramsJson) {
             applied++;
         }
 
-        if (!applied) return mcErr('não achei o Lumetri Color nos clipes');
+        if (!applied) return mcErr('Adicione o efeito Lumetri Color no clipe da timeline');
         return mcJSON({ ok: true, count: applied, missed: missed, noLumetri: noLumetri });
     } catch (e) { return mcErr(e); }
 }

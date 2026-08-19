@@ -215,6 +215,20 @@
     img.src = url;
   }
 
+  function loadRefBase64(b64, name, mime) {
+    var img = new Image();
+    img.onload = function () {
+      S.refData = drawInto(ctxRef, cvRef, img);
+      S.ref = MC.analyze(S.refData);
+      $('#slotRef').classList.add('filled');
+      status('Referência colada', 'on');
+      $('#ftInfo').textContent = (name || 'imagem colada').slice(0, 26);
+      recompute();
+    };
+    img.onerror = function () { status('Imagem inválida', 'err'); };
+    img.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+  }
+
   /* ═══════════════ ler o frame do clipe ═══════════════ */
   function extractFrameFromSource(mediaPath, timeSec, clipName) {
     var ext = (mediaPath.split('.').pop() || '').toLowerCase();
@@ -485,35 +499,88 @@
   $('#slotClip').onclick = readClipFrame;
   $('#btnReadClip').onclick = readClipFrame;
 
-  $('#btnPaste').onclick = function () {
-    if (!navigator.clipboard || !navigator.clipboard.read) {
-      status('Colar indisponível', 'err'); return;
-    }
-    navigator.clipboard.read().then(function (items) {
-      for (var i = 0; i < items.length; i++) {
-        var types = items[i].types;
-        for (var t = 0; t < types.length; t++) {
-          if (types[t].indexOf('image/') === 0) {
-            return items[i].getType(types[t]).then(function (blob) {
-              loadRefFile(new File([blob], 'colado.png', { type: blob.type }));
-            });
+  function handlePasteAction() {
+    status('Lendo área de transferência…', 'busy');
+
+    // 1. Tenta via Node / PowerShell nativo do sistema operacional (Windows)
+    if (cp && os && pathM && fs) {
+      var tmp = pathM.join(os.tmpdir(), 'mastercolor-paste-' + Date.now() + '.png');
+      var psScript = "$img = [System.Windows.Forms.Clipboard]::GetImage(); if ($img) { $img.Save('" + tmp.replace(/\\/g, '\\\\') + "', [System.Drawing.Imaging.ImageFormat]::Png); Write-Output 'IMAGE_OK'; exit 0 }; $files = [System.Windows.Forms.Clipboard]::GetFileDropList(); if ($files.Count -gt 0) { Write-Output $files[0]; exit 0 }; exit 1";
+      var cmd = 'powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; ' + psScript + '"';
+
+      cp.exec(cmd, { timeout: 3500 }, function (err, stdout) {
+        if (!err && fs.existsSync(tmp)) {
+          try {
+            var buf = fs.readFileSync(tmp);
+            loadRefBase64(buf.toString('base64'), 'imagem colada');
+            try { fs.unlinkSync(tmp); } catch (e) {}
+            return;
+          } catch (eRead) {}
+        }
+
+        if (!err && stdout && stdout.trim()) {
+          var outPath = stdout.trim();
+          if (fs.existsSync(outPath)) {
+            var ext = (outPath.split('.').pop() || '').toLowerCase();
+            if (['jpg', 'jpeg', 'png', 'tif', 'tiff', 'bmp', 'webp'].indexOf(ext) >= 0) {
+              try {
+                var bufFile = fs.readFileSync(outPath);
+                var mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+                loadRefBase64(bufFile.toString('base64'), pathM.basename(outPath), mime);
+                return;
+              } catch (eF) {}
+            }
           }
         }
-      }
-      status('Sem imagem na área', 'err');
-    }).catch(function () { status('Colar bloqueado', 'err'); });
-  };
+
+        // Se o clipboard do sistema não tiver imagem, tenta via Clipboard API web
+        tryBrowserClipboard();
+      });
+      return;
+    }
+
+    tryBrowserClipboard();
+  }
+
+  function tryBrowserClipboard() {
+    if (navigator.clipboard && navigator.clipboard.read) {
+      navigator.clipboard.read().then(function (items) {
+        for (var i = 0; i < items.length; i++) {
+          var types = items[i].types;
+          for (var t = 0; t < types.length; t++) {
+            if (types[t].indexOf('image/') === 0) {
+              return items[i].getType(types[t]).then(function (blob) {
+                loadRefFile(new File([blob], 'colado.png', { type: blob.type }));
+              });
+            }
+          }
+        }
+        file.click();
+        status('Selecione a imagem de referência', 'on');
+      }).catch(function () {
+        file.click();
+        status('Selecione a imagem de referência', 'on');
+      });
+    } else {
+      file.click();
+      status('Selecione a imagem de referência', 'on');
+    }
+  }
+
+  $('#btnPaste').onclick = handlePasteAction;
 
   document.addEventListener('paste', function (e) {
     var items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image/') === 0) {
-        loadRefFile(items[i].getAsFile());
-        e.preventDefault();
-        return;
+    if (items) {
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image/') === 0) {
+          loadRefFile(items[i].getAsFile());
+          e.preventDefault();
+          return;
+        }
       }
     }
+    handlePasteAction();
   });
 
   var str = $('#strength');

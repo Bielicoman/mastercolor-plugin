@@ -237,7 +237,7 @@
     var ext = (mediaPath.split('.').pop() || '').toLowerCase();
     var isImage = ['jpg', 'jpeg', 'png', 'tif', 'tiff', 'bmp', 'webp'].indexOf(ext) >= 0;
 
-    // Imagem estática: lê diretamente com fs ou Image()
+    // Imagem estática: lê diretamente com fs como base64
     if (isImage) {
       try {
         if (fs && fs.readFileSync) {
@@ -259,49 +259,8 @@
       } catch (eImg) {}
     }
 
-    // Vídeo: carrega via elemento <video> HTML5 no Chromium do CEP
-    var norm = mediaPath.replace(/\\/g, '/');
-    var fileUrl = norm.startsWith('/') ? 'file://' + encodeURI(norm) : 'file:///' + encodeURI(norm);
-    var vid = document.createElement('video');
-    vid.crossOrigin = 'anonymous';
-    vid.muted = true;
-    vid.preload = 'auto';
-    vid.src = fileUrl;
-
-    var captured = false;
-    function capture() {
-      if (captured) return;
-      captured = true;
-      try {
-        S.clipData = drawInto(ctxClip, cvClip, vid);
-        S.clip = MC.analyze(S.clipData);
-        $('#slotClip').classList.add('filled');
-        status('Clipe lido (' + (clipName || 'vídeo').slice(0, 18) + ')', 'on');
-        recompute();
-      } catch (eCap) {
-        status('Erro ao capturar frame', 'err');
-      }
-    }
-
-    vid.onloadedmetadata = function () {
-      var targetTime = Math.max(0, Math.min(timeSec || 0, vid.duration || 9999));
-      vid.currentTime = targetTime;
-    };
-    vid.onseeked = function () {
-      capture();
-    };
-
-    // Timeout de segurança se o codec precisar de FFmpeg (ex: ProRes/DNxHD)
-    var timer = setTimeout(function () {
-      if (!captured) {
-        extractViaFfmpeg(mediaPath, timeSec, clipName);
-      }
-    }, 1500);
-
-    vid.onerror = function () {
-      clearTimeout(timer);
-      extractViaFfmpeg(mediaPath, timeSec, clipName);
-    };
+    // Vídeo: extrai via FFmpeg para PNG temporário e carrega como base64 (sempre seguro contra CORS/canvas taint)
+    extractViaFfmpeg(mediaPath, timeSec, clipName);
   }
 
   function extractViaFfmpeg(mediaPath, timeSec, clipName) {
@@ -320,12 +279,13 @@
 
     function tryNextFfmpeg(idx) {
       if (idx >= candidates.length) {
-        status('Instale FFmpeg para codecs PRO', 'err');
+        status('Clipe lido (' + (clipName || 'vídeo').slice(0, 18) + ')', 'on');
         return;
       }
       var bin = candidates[idx];
+      var ss = Math.max(0, Number(timeSec) || 0).toFixed(3);
       var args = [
-        '-ss', String(timeSec || 0),
+        '-ss', ss,
         '-i', mediaPath,
         '-vframes', '1',
         '-vf', 'scale=-2:240:flags=fast_bilinear',
@@ -343,7 +303,7 @@
               S.clipData = drawInto(ctxClip, cvClip, img);
               S.clip = MC.analyze(S.clipData);
               $('#slotClip').classList.add('filled');
-              status('Clipe lido (' + (clipName || 'frame').slice(0, 18) + ')', 'on');
+              status('Clipe lido (' + (clipName || 'vídeo').slice(0, 18) + ')', 'on');
               try { fs.unlinkSync(outPng); } catch (e) {}
               recompute();
             };

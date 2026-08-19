@@ -620,6 +620,14 @@
     status('Fora do Premiere', 'err');
     $('#ftInfo').textContent = 'modo avulso';
   } else {
+    try {
+      var extPath = cs.getSystemPath(SystemPath.EXTENSION || 'extension');
+      if (extPath) {
+        var jsxPath = (extPath + '/src/lumetri-bridge.jsx').replace(/\\/g, '/');
+        cs.evalScript('$.evalFile("' + jsxPath + '")');
+      }
+    } catch (eJsx) {}
+
     evalJSON('getPluginInfo', undefined, function (info) {
       if (info && info.ok) {
         hostOk = true;

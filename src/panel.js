@@ -152,6 +152,7 @@
     $('#distTag').textContent = S.clip ? 'distância ' + MC.distance(S.clip, S.ref) : '—';
 
     $('#btnApply').disabled = !hostOk;
+    $('#btnExportLut').disabled = false;
     $('#btnSaveLook').disabled = false;
     $('#btnPreview').disabled = !S.clipData;
     paintAll();
@@ -420,6 +421,46 @@
     });
   }
 
+  function exportLut() {
+    if (!S.params) return;
+    status('Gerando LUT .cube…', 'busy');
+    try {
+      var cubeStr = MC.generateCube(S.params, 33);
+      if (!cubeStr) throw new Error('Falha ao gerar .cube');
+
+      var lookName = (S.params.meta && S.params.meta.look) || 'MasterColor-Look';
+      var safeName = lookName.replace(/[^a-zA-Z0-9_-]/g, '_') + '.cube';
+
+      var destPath = null;
+      if (pathM && os && fs) {
+        var userHome = os.homedir ? os.homedir() : (process.env.USERPROFILE || 'C:\\');
+        var desktopPath = pathM.join(userHome, 'Desktop', safeName);
+        var tempPath = pathM.join(os.tmpdir(), safeName);
+        destPath = desktopPath;
+        try {
+          fs.writeFileSync(desktopPath, cubeStr, 'utf8');
+        } catch (eDesk) {
+          destPath = tempPath;
+          fs.writeFileSync(tempPath, cubeStr, 'utf8');
+        }
+      }
+
+      if (destPath && cs) {
+        evalScript('importFiles', [destPath], function () {});
+        status('LUT salvo no Desktop e Projeto!', 'on');
+      } else {
+        var blob = new Blob([cubeStr], { type: 'text/plain;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = safeName;
+        a.click();
+        status('LUT baixado', 'on');
+      }
+    } catch (e) {
+      status('Erro ao exportar LUT', 'err');
+    }
+  }
+
   function reset() {
     if (!hostOk) { S.params = null; paintAll(); return; }
     status('Resetando…', 'busy');
@@ -602,6 +643,7 @@
   });
 
   $('#btnApply').onclick = apply;
+  $('#btnExportLut').onclick = exportLut;
   $('#btnReset').onclick = reset;
   $('#btnSaveLook').onclick = saveLook;
   $('#btnPreview').onclick = function () {

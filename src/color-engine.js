@@ -382,15 +382,75 @@
     return out;
   }
 
-  /** Zerado, para o botão de resetar. */
-  function neutralParams() {
-    return {
-      basic: { exposure: 0, contrast: 0, highlights: 0, shadows: 0, whites: 0,
-               blacks: 0, temperature: 0, tint: 0, saturation: 100, vibrance: 0 },
-      wheels: { shadows: { r: 0, g: 0, b: 0 }, midtones: { r: 0, g: 0, b: 0 },
-                highlights: { r: 0, g: 0, b: 0 } },
-      meta: { mode: 'reset', strength: 0 }
-    };
+  /**
+   * Gera um arquivo .cube 3D LUT a partir dos parâmetros de correção de cor calculados.
+   * @param {Object} params { basic, wheels }
+   * @param {number} [size=33] Tamanho da grade 3D (33x33x33)
+   * @returns {string} Conteúdo em texto formatado no padrão Adobe .cube
+   */
+  function generateCube(params, size) {
+    size = size || 33;
+    var lines = [
+      '# Master Color 3D LUT',
+      '# Created by Alex Ascencio',
+      'LUT_3D_SIZE ' + size,
+      ''
+    ];
+
+    var B = params.basic, W = params.wheels;
+    var exp = Math.pow(2, B.exposure);
+    var temp = B.temperature / 100, tint = B.tint / 100;
+    var ct = 1 + (B.contrast / 100) * 0.9;
+    var sat = B.saturation / 100, vib = B.vibrance / 100;
+    var hlA = B.highlights / 100, shA = B.shadows / 100;
+    var whA = B.whites / 100, blA = B.blacks / 100;
+
+    for (var bIdx = 0; bIdx < size; bIdx++) {
+      var inB = bIdx / (size - 1);
+      for (var gIdx = 0; gIdx < size; gIdx++) {
+        var inG = gIdx / (size - 1);
+        for (var rIdx = 0; rIdx < size; rIdx++) {
+          var inR = rIdx / (size - 1);
+
+          var r = inR, g = inG, b = inB;
+
+          // exposição
+          r = Math.pow(Math.max(0, Math.pow(r, 2.2) * exp), 1 / 2.2);
+          g = Math.pow(Math.max(0, Math.pow(g, 2.2) * exp), 1 / 2.2);
+          b = Math.pow(Math.max(0, Math.pow(b, 2.2) * exp), 1 / 2.2);
+
+          // balanço de branco
+          r *= 1 + temp * 0.55 + tint * 0.10;
+          g *= 1 - Math.abs(temp) * 0.06 + tint * 0.30;
+          b *= 1 - temp * 0.55 + tint * 0.10;
+
+          // contraste
+          r = (r - 0.5) * ct + 0.5; g = (g - 0.5) * ct + 0.5; b = (b - 0.5) * ct + 0.5;
+
+          var L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          var mH = Math.max(0, (L - 0.5) * 2), mS = Math.max(0, (0.5 - L) * 2);
+          var mW = Math.max(0, (L - 0.75) * 4), mB = Math.max(0, (0.25 - L) * 4);
+          var add = hlA * 0.42 * mH + shA * 0.42 * mS + whA * 0.32 * mW - blA * 0.32 * mB;
+          r += add; g += add; b += add;
+
+          var mM = 1 - Math.abs(L - 0.5) * 2;
+          r += (W.shadows.r * mS + W.midtones.r * mM + W.highlights.r * mH) * 1.5;
+          g += (W.shadows.g * mS + W.midtones.g * mM + W.highlights.g * mH) * 1.5;
+          b += (W.shadows.b * mS + W.midtones.b * mM + W.highlights.b * mH) * 1.5;
+
+          // saturação
+          var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          var chroma = Math.max(r, g, b) - Math.min(r, g, b);
+          var s = sat + vib * 0.55 * (1 - Math.min(1, chroma * 1.6));
+          r = lum + (r - lum) * s; g = lum + (g - lum) * s; b = lum + (b - lum) * s;
+
+          r = clamp(r, 0, 1); g = clamp(g, 0, 1); b = clamp(b, 0, 1);
+
+          lines.push(r.toFixed(6) + ' ' + g.toFixed(6) + ' ' + b.toFixed(6));
+        }
+      }
+    }
+    return lines.join('\n');
   }
 
   return {
@@ -404,6 +464,7 @@
     describe: describe,
     rgbToLab: rgbToLab,
     isSkin: isSkin,
+    generateCube: generateCube,
     _NEUTRAL: NEUTRAL
   };
 });
